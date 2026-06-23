@@ -1,42 +1,65 @@
 <script>
-var map = L.map('map').setView([46.5, 2.5], 6); // centre France par défaut
+
+// Carte
+var map = L.map('map').setView([46.5, 2.5], 6);
 
 L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '© OpenStreetMap'
 }).addTo(map);
 
 // GPX
-var gpx = new L.GPX('./gpx/Trace-Boucle-du-Plan-deau_Club-du-Soleil-de-Dole.gpx', {
-    async: true,
-    marker_options: {
-        startIconUrl: null,
-        endIconUrl: null,
-        shadowUrl: null
-    }
-})
-.on('loaded', function(e) {
+L.GPX('./gpx/Trace1.gpx', {
+    async: true
+}).on('loaded', function(e) {
     map.fitBounds(e.target.getBounds());
-})
-.on('error', function(e) {
-    console.error("Erreur GPX :", e);
-})
-.addTo(map);
+}).addTo(map);
 
-// localisation (ok)
-var marker;
 
+// ----------------------
+// GPS UTILISATEUR
+// ----------------------
+
+var userMarker;
+var accuracyCircle;
+
+// 👉 1. Demande de localisation immédiate
 map.locate({
-    watch: true,
-    enableHighAccuracy: true
+    setView: true,        // centre la carte sur l'utilisateur
+    watch: true,          // mise à jour continue
+    enableHighAccuracy: true,
+    maximumAge: 1000,
+    timeout: 10000
 });
 
+// 👉 2. Quand position trouvée
 map.on('locationfound', function(e) {
-    if (marker) {
-        marker.setLatLng(e.latlng);
-    } else {
-        marker = L.marker(e.latlng)
+
+    var radius = e.accuracy;
+
+    // marker utilisateur
+    if (!userMarker) {
+        userMarker = L.marker(e.latlng)
             .addTo(map)
-            .bindPopup("Vous êtes ici");
+            .bindPopup("📍 Vous êtes ici")
+            .openPopup();
+    } else {
+        userMarker.setLatLng(e.latlng);
     }
+
+    // cercle de précision GPS
+    if (!accuracyCircle) {
+        accuracyCircle = L.circle(e.latlng, radius).addTo(map);
+    } else {
+        accuracyCircle.setLatLng(e.latlng);
+        accuracyCircle.setRadius(radius);
+    }
+
 });
+
+// 👉 3. Gestion erreur GPS
+map.on('locationerror', function(e) {
+    console.log("Erreur GPS :", e.message);
+    alert("Impossible d'obtenir votre position GPS. Autorisez la localisation.");
+});
+
 </script>
