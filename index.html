@@ -1,74 +1,42 @@
-<!DOCTYPE html>
-<html>
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-
-<title>Boucle cyclo CCVA</title>
-
-<link rel="stylesheet"
-href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
-
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-
-<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet-gpx/1.7.0/gpx.min.js"></script>
-
-<style>
-html, body, #map {
-    height: 100%;
-    margin: 0;
-}
-</style>
-
-</head>
-<body>
-
-<div id="map"></div>
-
 <script>
+var map = L.map('map').setView([46.5, 2.5], 6); // centre France par défaut
 
-var map = L.map('map');
-
-L.tileLayer(
-'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-{
-    attribution:'© OpenStreetMap'
-}
-).addTo(map);
-
-var gpx = new L.GPX(
-'gpx/Trace-Boucle-du-Plan-deau_Club-du-Soleil-de-Dole.gpx',
-{
-    async:true
-}
-).on('loaded', function(e){
-
-    map.fitBounds(
-        e.target.getBounds()
-    );
-
+L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© OpenStreetMap'
 }).addTo(map);
 
+// GPX
+var gpx = new L.GPX('./gpx/Trace-Boucle-du-Plan-deau_Club-du-Soleil-de-Dole.gpx', {
+    async: true,
+    marker_options: {
+        startIconUrl: null,
+        endIconUrl: null,
+        shadowUrl: null
+    }
+})
+.on('loaded', function(e) {
+    map.fitBounds(e.target.getBounds());
+})
+.on('error', function(e) {
+    console.error("Erreur GPX :", e);
+})
+.addTo(map);
+
+// localisation (ok)
 var marker;
 
 map.locate({
-    watch:true,
-    enableHighAccuracy:true
+    watch: true,
+    enableHighAccuracy: true
 });
 
-map.on('locationfound', function(e){
-
-    if(marker){
+map.on('locationfound', function(e) {
+    if (marker) {
         marker.setLatLng(e.latlng);
     } else {
         marker = L.marker(e.latlng)
-        .addTo(map)
-        .bindPopup("Vous êtes ici");
+            .addTo(map)
+            .bindPopup("Vous êtes ici");
     }
-
 });
-
 </script>
-
-</body>
-</html>
