@@ -1,146 +1,74 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<title>Boucle cyclo CCVA</title>
+
+<link rel="stylesheet"
+href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet-gpx/1.7.0/gpx.min.js"></script>
+
+<style>
+html, body, #map {
+    height: 100%;
+    margin: 0;
+}
+</style>
+
+</head>
+<body>
+
+<div id="map"></div>
+
 <script>
 
-// --------------------
-// CARTE (IMPORTANT FIX MOBILE)
-// --------------------
-var map = L.map('map').setView([46.5, 2.5], 6);
+var map = L.map('map');
 
-setTimeout(() => {
-    map.invalidateSize();
-}, 300);
+L.tileLayer(
+'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+{
+    attribution:'© OpenStreetMap'
+}
+).addTo(map);
 
-L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '© OpenStreetMap'
+var gpx = new L.GPX(
+'gpx/Trace-Boucle-du-Plan-deau_Club-du-Soleil-de-Dole.gpx',
+{
+    async:true
+}
+).on('loaded', function(e){
+
+    map.fitBounds(
+        e.target.getBounds()
+    );
+
 }).addTo(map);
 
-// échelle
-L.control.scale({ metric: true }).addTo(map);
-
-
-// --------------------
-// GPX (SAFE)
-// --------------------
-L.GPX('./gpx/Trace1.gpx', {
-    async: true
-}).on('loaded', function(e) {
-    map.fitBounds(e.target.getBounds());
-}).on('error', function(e){
-    console.log("GPX error", e);
-}).addTo(map);
-
-
-// --------------------
-// GPS (AVEC FALLBACK)
-// --------------------
-var userMarker;
-var accuracyCircle;
-var currentLatLng = null;
-
-// fallback affichage initial si GPS refuse
-setTimeout(() => {
-    if (!currentLatLng) {
-        map.setView([46.5, 2.5], 6);
-        console.log("GPS non actif → fallback carte");
-    }
-}, 5000);
+var marker;
 
 map.locate({
-    watch: true,
-    enableHighAccuracy: true,
-    setView: false
+    watch:true,
+    enableHighAccuracy:true
 });
 
-map.on('locationfound', function(e) {
+map.on('locationfound', function(e){
 
-    currentLatLng = e.latlng;
-
-    var radius = e.accuracy;
-
-    if (!userMarker) {
-        userMarker = L.marker(e.latlng).addTo(map)
-            .bindPopup("📍 Vous êtes ici");
+    if(marker){
+        marker.setLatLng(e.latlng);
     } else {
-        userMarker.setLatLng(e.latlng);
-    }
-
-    if (!accuracyCircle) {
-        accuracyCircle = L.circle(e.latlng, radius).addTo(map);
-    } else {
-        accuracyCircle.setLatLng(e.latlng);
-        accuracyCircle.setRadius(radius);
+        marker = L.marker(e.latlng)
+        .addTo(map)
+        .bindPopup("Vous êtes ici");
     }
 
 });
-
-map.on('locationerror', function(e) {
-    console.log("GPS error:", e.message);
-});
-
-
-// --------------------
-// BOUTON CENTRER
-// --------------------
-var btn = document.getElementById("centerBtn");
-
-btn.addEventListener("click", function() {
-    if (currentLatLng) {
-        map.setView(currentLatLng, 16);
-    } else {
-        alert("Position GPS non disponible");
-    }
-});
-
-
-// --------------------
-// ORIENTATION (SAFE iOS + Android)
-// --------------------
-var headingMarker = L.circleMarker([0,0], {
-    radius: 6,
-    color: "blue",
-    fillColor: "blue",
-    fillOpacity: 0.8
-}).addTo(map);
-
-function startOrientation() {
-
-    if (typeof DeviceOrientationEvent !== "undefined" &&
-        typeof DeviceOrientationEvent.requestPermission === "function") {
-
-        // iOS obligatoire
-        DeviceOrientationEvent.requestPermission()
-        .then(response => {
-            if (response === "granted") {
-                listenOrientation();
-            }
-        })
-        .catch(console.error);
-
-    } else {
-        listenOrientation();
-    }
-}
-
-function listenOrientation() {
-
-    window.addEventListener("deviceorientation", function(event) {
-
-        var heading = event.alpha;
-
-        if (heading !== null && currentLatLng) {
-
-            var rad = heading * Math.PI / 180;
-            var dist = 0.0005;
-
-            var lat = currentLatLng.lat + Math.cos(rad) * dist;
-            var lng = currentLatLng.lng + Math.sin(rad) * dist;
-
-            headingMarker.setLatLng([lat, lng]);
-        }
-
-    }, true);
-}
-
-// activer après interaction utilisateur (important iOS)
-document.addEventListener("click", startOrientation, { once: true });
 
 </script>
+
+</body>
+</html>
