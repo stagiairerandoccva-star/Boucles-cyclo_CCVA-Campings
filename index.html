@@ -1,13 +1,67 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<title>Boucle cyclo CCVA</title>
+
+<link rel="stylesheet"
+href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet-gpx/1.7.0/gpx.min.js"></script>
+
+<style>
+html, body, #map {
+    height: 100%;
+    margin: 0;
+}
+
+/* bouton custom */
+#centerBtn {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    z-index: 999;
+    background: white;
+    padding: 10px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-family: sans-serif;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+}
+</style>
+</head>
+
+<body>
+
+<div id="centerBtn">📍 Me centrer</div>
+<div id="map"></div>
+
 <script>
 
-// Carte
+// --------------------
+// CARTE
+// --------------------
 var map = L.map('map').setView([46.5, 2.5], 6);
 
+// fond de carte
 L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '© OpenStreetMap'
 }).addTo(map);
 
+// échelle (📏 demandé)
+L.control.scale({
+    imperial: false,
+    metric: true,
+    position: 'bottomleft'
+}).addTo(map);
+
+
+// --------------------
 // GPX
+// --------------------
 L.GPX('./gpx/Trace1.gpx', {
     async: true
 }).on('loaded', function(e) {
@@ -15,38 +69,35 @@ L.GPX('./gpx/Trace1.gpx', {
 }).addTo(map);
 
 
-// ----------------------
+// --------------------
 // GPS UTILISATEUR
-// ----------------------
-
+// --------------------
 var userMarker;
 var accuracyCircle;
 
-// 👉 1. Demande de localisation immédiate
+var currentLatLng = null;
+
+// suivi GPS continu
 map.locate({
-    setView: true,        // centre la carte sur l'utilisateur
-    watch: true,          // mise à jour continue
-    enableHighAccuracy: true,
-    maximumAge: 1000,
-    timeout: 10000
+    watch: true,
+    enableHighAccuracy: true
 });
 
-// 👉 2. Quand position trouvée
 map.on('locationfound', function(e) {
+
+    currentLatLng = e.latlng;
 
     var radius = e.accuracy;
 
-    // marker utilisateur
+    // marker
     if (!userMarker) {
-        userMarker = L.marker(e.latlng)
-            .addTo(map)
-            .bindPopup("📍 Vous êtes ici")
-            .openPopup();
+        userMarker = L.marker(e.latlng).addTo(map)
+            .bindPopup("📍 Vous êtes ici");
     } else {
         userMarker.setLatLng(e.latlng);
     }
 
-    // cercle de précision GPS
+    // cercle précision
     if (!accuracyCircle) {
         accuracyCircle = L.circle(e.latlng, radius).addTo(map);
     } else {
@@ -56,10 +107,58 @@ map.on('locationfound', function(e) {
 
 });
 
-// 👉 3. Gestion erreur GPS
 map.on('locationerror', function(e) {
-    console.log("Erreur GPS :", e.message);
-    alert("Impossible d'obtenir votre position GPS. Autorisez la localisation.");
+    console.log(e.message);
 });
 
+
+// --------------------
+// BOUTON "CENTRER SUR MOI"
+// --------------------
+document.getElementById("centerBtn").addEventListener("click", function() {
+    if (currentLatLng) {
+        map.setView(currentLatLng, 16);
+    } else {
+        alert("Position GPS non encore disponible");
+    }
+});
+
+
+// --------------------
+// ORIENTATION (Boussole téléphone)
+// --------------------
+var headingMarker = L.circleMarker([0,0], {
+    radius: 8,
+    color: "blue",
+    fillColor: "blue",
+    fillOpacity: 0.8
+}).addTo(map);
+
+// direction device
+if (window.DeviceOrientationEvent) {
+
+    window.addEventListener("deviceorientation", function(event) {
+
+        // alpha = direction (0-360°)
+        var heading = event.alpha;
+
+        if (heading !== null && currentLatLng) {
+
+            var rad = heading * Math.PI / 180;
+            var dist = 0.0005; // petite distance devant
+
+            var lat = currentLatLng.lat + Math.cos(rad) * dist;
+            var lng = currentLatLng.lng + Math.sin(rad) * dist;
+
+            headingMarker.setLatLng([lat, lng]);
+
+        }
+
+    }, true);
+
+}
+
 </script>
+
+</body>
+</html>
